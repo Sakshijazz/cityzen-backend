@@ -9,10 +9,10 @@ public class AadhaarRegistry {
     @Column(unique = true, nullable = false) // Ensure the Aadhaar number is unique and not null
     @NotBlank(message = "Aadhaar number cannot be blank")
     private String aadhaarNumber;
-    // Default constructor
+    // Default constructor (required by JPA)
     public AadhaarRegistry() {
     }
-    // Constructor with parameters (optional)
+    // Constructor with parameters
     public AadhaarRegistry(String aadhaarNumber) {
         this.aadhaarNumber = aadhaarNumber;
     }

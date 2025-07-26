@@ -3,52 +3,45 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 public class SignUpRequest {
     @NotBlank
-    private String userName; // New field for first name
+    private String userName;
     @Email
     @NotBlank
     private String email;
     @NotBlank
     private String password;
-    private String aadhaar; // Optional
     @NotBlank
-    private String phoneNumber; // New field for phone number
-    private String otp; // New field for OTP
+    private String aadhaar; // Assuming this is the Aadhaar number
     // Getters and Setters
     public String getUserName() {
-        return userName; // Return the first name
+        return userName;
     }
     public void setUserName(String userName) {
-        this.userName = userName; // Set the first name
+        this.userName = userName;
     }
     public String getEmail() {
-        return email; // Return the email
+        return email;
     }
     public void setEmail(String email) {
-        this.email = email; // Set the email
+        this.email = email;
     }
     public String getPassword() {
-        return password; // Return the password
+        return password;
     }
     public void setPassword(String password) {
-        this.password = password; // Set the password
+        this.password = password;
     }
     public String getAadhaar() {
-        return aadhaar; // Return the Aadhaar number
+        return aadhaar;
     }
     public void setAadhaar(String aadhaar) {
-        this.aadhaar = aadhaar; // Set the Aadhaar number
+        this.aadhaar = aadhaar;
     }
-    public String getPhoneNumber() {
-        return phoneNumber; // Return the phone number
+    // Method to validate password
+    public boolean isValidPassword() {
+        return password != null && password.length() >= 8 &&
+                password.matches(".*[A-Z].*") && // At least one uppercase letter
+                password.matches(".*[a-z].*") && // At least one lowercase letter
+                password.matches(".*[0-9].*") && // At least one digit
+                password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*"); // At least one special character
     }
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber; // Set the phone number
-    }
-    public String getOtp() {
-        return otp; // Return the OTP
-    }
-    public void setOtp(String otp) {
-        this.otp = otp; // Set the OTP
-    }
-
 }

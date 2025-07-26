@@ -1,15 +1,18 @@
 package com.cityzen.auth.service;
 import com.cityzen.auth.dto.*;
+import com.cityzen.auth.entity.AadhaarRegistry;
 import com.cityzen.auth.entity.ForgotPasswordToken;
 import com.cityzen.auth.entity.User;
 import com.cityzen.auth.enums.Role;
 import com.cityzen.auth.exception.CustomException;
+import com.cityzen.auth.repository.AadhaarRegistryRepository;
 import com.cityzen.auth.repository.ForgotPasswordTokenRepository;
 import com.cityzen.auth.repository.UserRepository;
 import com.cityzen.auth.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -31,12 +34,28 @@ public class AuthServiceImpl implements AuthService, UserDetailsService {
     private JwtUtil jwtUtil;
     @Autowired
     private ForgotPasswordTokenRepository forgotPasswordTokenRepository;
-    // In-memory OTP storage (for simplicity, consider using a more robust solution)
+    @Autowired
+    private AadhaarRegistryRepository aadhaarRegistryRepository;
     private final Map<String, String> otpStore = new ConcurrentHashMap<>();
-    private static final Set<String> mockAadhaarSet = new HashSet<>(Arrays.asList(
-            "123456789012",// Add some mock Aadhaar numbers for testing
-            "987654321012"
-    ));
+
+    @Autowired
+    public AuthServiceImpl(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtUtil jwtUtil,
+            ForgotPasswordTokenRepository forgotPasswordTokenRepository,
+            AadhaarRegistryRepository aadhaarRegistryRepository
+    ) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
+        this.forgotPasswordTokenRepository = forgotPasswordTokenRepository;
+        this.aadhaarRegistryRepository = aadhaarRegistryRepository;
+    }
+
+    public AuthServiceImpl(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     @Override
     public String generateOtp(String aadhaar) {
@@ -55,6 +74,14 @@ public class AuthServiceImpl implements AuthService, UserDetailsService {
 
     @Override
     public void signup(SignUpRequest request) {
+        // Validate Aadhaar number length
+        if (request.getAadhaar() == null || request.getAadhaar().length() != 12) {
+            throw new CustomException("Aadhaar number must be exactly 12 digits", HttpStatus.BAD_REQUEST);
+        }
+        // Validate Password complexity
+        if (!isValidPassword(request.getPassword())) {
+            throw new CustomException("Password should have Uppercase, Lowercase, Digit and Special character", HttpStatus.BAD_REQUEST);
+        }
         // Validate that the user does not already exist
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new CustomException("User already exists", HttpStatus.BAD_REQUEST);
@@ -67,16 +94,54 @@ public class AuthServiceImpl implements AuthService, UserDetailsService {
         userRepository.save(user);
     }
 
+    // Method to validate password
+    private boolean isValidPassword(String password) {
+        return password != null && password.length() >= 8 &&
+                password.matches(".*[A-Z].*") && // At least one uppercase letter
+                password.matches(".*[a-z].*") && // At least one lowercase letter
+                password.matches(".*[0-9].*") && // At least one digit
+                password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*"); // At least one special character
+    }
+
+//    @Override
+//    public JwtResponse signin(SignInRequest request) {
+//        Authentication authentication = authenticationManager.authenticate(
+//                new UsernamePasswordAuthenticationToken(
+//                        request.getEmail(),
+//                        request.getPassword()
+//                )
+//        );
+//        SecurityContextHolder.getContext().setAuthentication(authentication);
+//
+//        String jwt = jwtUtil.generateJwtToken(authentication);
+//        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+//
+//        // Get user from DB to fetch role
+//        User user = userRepository.findByEmail(userDetails.getUsername())
+//                .orElseThrow(() -> new RuntimeException("User not found"));
+//
+//        String role = user.getRole().name();
+//        String email = user.getEmail();
+//        long expiresAt = jwtUtil.extractAllClaims(jwt).getExpiration().getTime();
+//
+//        return new JwtResponse(jwt, role, email, expiresAt);
+//    }
+
     @Override
     public JwtResponse signin(SignInRequest request) {
-        // Authenticate user and return JWT
-        Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
-        if (userOpt.isPresent() && passwordEncoder.matches(request.getPassword(), userOpt.get().getPassword())) {
-            String token = jwtUtil.generateToken(userOpt.get().getEmail(), userOpt.get().getRole().name());
-            return new JwtResponse(token, userOpt.get().getRole().name(), userOpt.get().getEmail(), System.currentTimeMillis() + 3600000);
-        } else {
-            throw new CustomException("Invalid credentials", HttpStatus.UNAUTHORIZED);
-        }
+        throw new UnsupportedOperationException("Use AuthController.signin() with AuthenticationManager instead.");
+    }
+
+    @Override
+    public JwtResponse generateJwtResponse(Authentication authentication) {
+        String jwt = jwtUtil.generateJwtToken(authentication);
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        String role = user.getRole().name();
+        String email = user.getEmail();
+        long expiresAt = jwtUtil.extractAllClaims(jwt).getExpiration().getTime();
+        return new JwtResponse(jwt, role, email, expiresAt);
     }
 
     @Override
@@ -134,30 +199,34 @@ public class AuthServiceImpl implements AuthService, UserDetailsService {
         }
     }
 
-    @Override
     public boolean verifyAadhaar(String aadhaar) {
-        // Check if the Aadhaar number exists in the mock dataset
-        return mockAadhaarSet.contains(aadhaar);
+        // Check if the Aadhaar number exists in the database
+        Optional<AadhaarRegistry> aadhaarOpt = aadhaarRegistryRepository.findByAadhaarNumber(aadhaar);
+        return aadhaarOpt.isPresent(); // Return true if Aadhaar exists, false otherwise
     }
 
+    //Dont Remove this method
 //    @Override
-//    public boolean verifyAadhaar(String aadhaar) {
-//        // TODO: Implement logic to check if the Aadhaar number exists in the database
-//        // For example, you might want to check against a mock database or a real database
-//        return aadhaarRegistryRepository.findByAadhaarNumber(aadhaar).isPresent(); // Example logic
+//    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+//        // Load user by username (email in this case)
+//        Optional<User> userOpt = userRepository.findByEmail(username);
+//        if (userOpt.isPresent()) {
+//            User user = userOpt.get();
+//            return new org.springframework.security.core.userdetails.User(user.getEmail(), user.getPassword(), new ArrayList<>()); // You can add roles and authorities if needed
+//        } else {
+//            throw new UsernameNotFoundException("User not found with email: " + username);
+//        }
 //    }
 
-    //Dont Remove this method
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // Load user by username (email in this case)
-        Optional<User> userOpt = userRepository.findByEmail(username);
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
-            return new org.springframework.security.core.userdetails.User(user.getEmail(), user.getPassword(), new ArrayList<>()); // You can add roles and authorities if needed
-        } else {
-            throw new UsernameNotFoundException("User not found with email: " + username);
-        }
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + username));
+        return org.springframework.security.core.userdetails.User
+                .withUsername(user.getEmail())
+                .password(user.getPassword())
+                .roles(user.getRole().name()) // Set role for authorization
+                .build();
     }
 }
 

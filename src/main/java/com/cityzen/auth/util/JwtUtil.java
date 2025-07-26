@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 @Component
 public class JwtUtil {
-    private String secret = "MySuperSecretKey12345"; // TODO: Move this to application.properties
+    private String secret = "MySuperSecretKey12345"; // Move this to application.properties
     private long expiration = 3600000; // 1 hour
     public String generateToken(String username, String role) {
         Map<String, Object> claims = new HashMap<>();

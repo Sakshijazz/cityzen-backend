@@ -9,39 +9,60 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     @Autowired
     private AuthService authService;
+
     @PostMapping("/verify-aadhaar")
     public ResponseEntity<?> verifyAadhaar(@RequestBody AadhaarVerifyRequest request) {
-        // TODO: Check mock DB and generate 6-digit OTP
-        return ResponseEntity.ok().build();
+        // Verify the Aadhaar number
+        boolean isVerified = authService.verifyAadhaar(request.getAadhaar());
+        if (isVerified) {
+            return ResponseEntity.ok("Aadhaar number is verified.");
+        } else {
+            return ResponseEntity.badRequest().body("Aadhaar number not found.");
+        }
     }
+
     @PostMapping("/validate-otp")
-    public ResponseEntity<?> validateOtp(@RequestBody AadhaarVerifyRequest request) {
-        // TODO: Validate OTP for Aadhaar
-        return ResponseEntity.ok().build();
+    public ResponseEntity<?> validateOtp(@RequestBody ValidateOtpRequest request) {
+        // Validate the OTP against the generated OTP
+        return null;
     }
+
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@RequestBody SignUpRequest request) {
-        // TODO: Register new citizen (OTP must be validated first)
-        return ResponseEntity.ok().build();
+        // Proceed with signup after OTP verification
+        authService.signup(request);
+        return ResponseEntity.ok("User registered successfully");
     }
+
     @PostMapping("/signin")
     public ResponseEntity<?> signin(@RequestBody SignInRequest request) {
-        // TODO: Authenticate and return JWT
-        return ResponseEntity.ok().build();
+        // Authenticate user and return JWT token
+        JwtResponse jwtResponse = authService.signin(request);
+        return ResponseEntity.ok(jwtResponse);
     }
+
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
-        // TODO: Generate and save reset token
-        return ResponseEntity.ok().build();
+        // Generate and save reset token, send email to user
+        authService.forgotPassword(request);
+        return ResponseEntity.ok("Password reset email sent");
     }
+
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
-        // TODO: Reset password using token
-        return ResponseEntity.ok().build();
+        // Reset password using the provided token
+        authService.resetPassword(request);
+        return ResponseEntity.ok("Password reset successfully");
     }
+
     @PutMapping("/change-password")
     public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request) {
-        // TODO: Allow logged-in users to update password
-        return ResponseEntity.ok().build();
+        // Allow logged-in users to update their password
+        authService.changePassword(request);
+        return ResponseEntity.ok("Password changed successfully");
     }
 }
+
+
+
+

@@ -5,5 +5,10 @@ public class ForgotPasswordRequest {
     @Email
     @NotBlank
     private String email;
-    // Getters and Setters
+    public String getEmail() {
+        return email; // Return the actual email
+    }
+    public void setEmail(String email) {
+        this.email = email;
+    }
 }

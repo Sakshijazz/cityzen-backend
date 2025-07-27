@@ -12,6 +12,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -27,43 +28,34 @@ public class SecurityConfig {
     }
 
     @Bean
-    public JwtAuthenticationFilter jwtAuthenticationFilter() {
-        return new JwtAuthenticationFilter();
+    public JwtAuthenticationFilter jwtAuthenticationFilter(JwtUtil jwtUtil,
+                                                           UserDetailsService userDetailsService) {
+        return new JwtAuthenticationFilter(jwtUtil, userDetailsService); // ✅ use constructor injection
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/auth/signup", "/auth/signin", "/auth/verify-aadhaar").permitAll()
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/auth/signup",
+                                "/auth/signin",
+                                "/auth/verify-aadhaar",
+                                "/auth/validate-otp",
+                                "/auth/generate-otp",
+                                "/auth/resend-otp"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
+        return authConfig.getAuthenticationManager();
     }
-
-//    @Bean
-//    public AuthServiceImpl userDetailsService(
-//            UserRepository userRepository,
-//            PasswordEncoder passwordEncoder,
-//            JwtUtil jwtUtil,
-//            AuthenticationManager authenticationManager,
-//            ForgotPasswordTokenRepository forgotPasswordTokenRepository,
-//            AadhaarRegistryRepository aadhaarRegistryRepository
-//    ) {
-//        return new AuthServiceImpl(
-//                userRepository,
-//                passwordEncoder,
-//                jwtUtil,
-//                authenticationManager,
-//                forgotPasswordTokenRepository,
-//                aadhaarRegistryRepository
-//        );
-//    }
 }

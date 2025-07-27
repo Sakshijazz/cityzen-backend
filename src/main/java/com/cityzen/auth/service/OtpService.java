@@ -1,19 +1,75 @@
 package com.cityzen.auth.service;
+
+import com.cityzen.auth.exception.CustomException;
+import com.cityzen.auth.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+
 @Service
 public class OtpService {
-    private ConcurrentHashMap<String, String> otpMap = new ConcurrentHashMap<>();
-    public String generateOtp(String aadhaar) {
-        // Generate a 6-digit OTP
-        String otp = String.valueOf(new Random().nextInt(900000) + 100000); // Generates a random 6-digit OTP
-        otpMap.put(aadhaar, otp); // Store the OTP in the map with Aadhaar as the key
-        return otp; // Return the generated OTP
+
+    @Autowired
+    private UserRepository userRepository;
+
+    private static final int OTP_EXPIRY_MINUTES = 10;
+
+    private static class OtpEntry {
+        private final String otp;
+        private final LocalDateTime expiryTime;
+
+        public OtpEntry(String otp, LocalDateTime expiryTime) {
+            this.otp = otp;
+            this.expiryTime = expiryTime;
+        }
+
+        public String getOtp() {
+            return otp;
+        }
+
+        public LocalDateTime getExpiryTime() {
+            return expiryTime;
+        }
     }
-    public boolean validateOtp(String aadhaar, String otp) {
-        // Validate OTP from otpMap
-        String storedOtp = otpMap.get(aadhaar); // Retrieve the stored OTP using Aadhaar
-        return storedOtp != null && storedOtp.equals(otp); // Check if the provided OTP matches the stored OTP
+
+    private final ConcurrentHashMap<String, OtpEntry> otpMap = new ConcurrentHashMap<>();
+
+    public String generateOtp(String email) {
+        // ✅ Check if user exists
+        if (!userRepository.findByEmail(email).isPresent()) {
+            throw new CustomException("Email not registered: " + email, HttpStatus.NOT_FOUND);
+        }
+
+        String otp = String.valueOf(new Random().nextInt(900000) + 100000);
+        LocalDateTime expiry = LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES);
+        otpMap.put(email, new OtpEntry(otp, expiry));
+
+        System.out.println("Generated OTP for " + email + ": " + otp);
+        return otp;
+    }
+
+    public String resendOtp(String email) {
+        // ✅ Check if user exists
+        if (!userRepository.findByEmail(email).isPresent()) {
+            throw new CustomException("Email not registered: " + email, HttpStatus.NOT_FOUND);
+        }
+
+        String otp = generateOtp(email);
+        System.out.println("Resent OTP for " + email + ": " + otp);
+        return otp;
+    }
+
+    public boolean validateOtp(String email, String otp) {
+        OtpEntry entry = otpMap.get(email);
+        if (entry == null) return false;
+        if (LocalDateTime.now().isAfter(entry.getExpiryTime())) {
+            otpMap.remove(email); // Expired
+            return false;
+        }
+        return entry.getOtp().equals(otp);
     }
 }

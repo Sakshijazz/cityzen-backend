@@ -1,6 +1,8 @@
 package com.cityzen.auth.controller;
 import com.cityzen.auth.dto.*;
 import com.cityzen.auth.service.AuthService;
+import com.cityzen.auth.service.EmailService;
+import com.cityzen.auth.service.OtpService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,6 +17,11 @@ public class AuthController {
     private AuthService authService;
     @Autowired
     private AuthenticationManager authenticationManager;
+    @Autowired
+    private OtpService otpService;
+
+    @Autowired
+    private EmailService emailService;
 
     @PostMapping("/verify-aadhaar")
     public ResponseEntity<?> verifyAadhaar(@RequestBody AadhaarVerifyRequest request) {
@@ -27,11 +34,11 @@ public class AuthController {
         }
     }
 
-    @PostMapping("/validate-otp")
-    public ResponseEntity<?> validateOtp(@RequestBody ValidateOtpRequest request) {
-        // Validate the OTP against the generated OTP
-        return null;
-    }
+//    @PostMapping("/validate-otp")
+//    public ResponseEntity<?> validateOtp(@RequestBody ValidateOtpRequest request) {
+//        // Validate the OTP against the generated OTP
+//        return null;
+//    }
 
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@RequestBody SignUpRequest request) {
@@ -76,6 +83,29 @@ public class AuthController {
         // Allow logged-in users to update their password
         authService.changePassword(request);
         return ResponseEntity.ok("Password changed successfully");
+    }
+    @PostMapping("/generate-otp")
+    public ResponseEntity<?> generateOtp(@RequestBody EmailRequest request) {
+        String otp = otpService.generateOtp(request.getEmail());
+        emailService.sendOtp(request.getEmail(), otp);
+        return ResponseEntity.ok("OTP sent to " + request.getEmail());
+    }
+
+    @PostMapping("/resend-otp")
+    public ResponseEntity<?> resendOtp(@RequestBody EmailRequest request) {
+        String otp = otpService.resendOtp(request.getEmail());
+        emailService.sendOtp(request.getEmail(), otp);
+        return ResponseEntity.ok("OTP resent to " + request.getEmail());
+    }
+
+    @PostMapping("/validate-otp")
+    public ResponseEntity<?> validateOtp(@RequestBody ValidateOtpRequest request) {
+        boolean isValid = otpService.validateOtp(request.getEmail(), request.getOtp());
+        if (isValid) {
+            return ResponseEntity.ok("OTP is valid");
+        } else {
+            return ResponseEntity.badRequest().body("Invalid OTP");
+        }
     }
 }
 

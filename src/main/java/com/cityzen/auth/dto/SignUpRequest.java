@@ -1,7 +1,8 @@
 package com.cityzen.auth.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-public class SignUpRequest {
+public class
+SignUpRequest {
     @NotBlank
     private String userName;
     @Email

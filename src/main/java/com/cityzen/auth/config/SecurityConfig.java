@@ -30,7 +30,7 @@ public class SecurityConfig {
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter(JwtUtil jwtUtil,
                                                            UserDetailsService userDetailsService) {
-        return new JwtAuthenticationFilter(jwtUtil, userDetailsService); // ✅ use constructor injection
+        return new JwtAuthenticationFilter(jwtUtil, userDetailsService); // use constructor injection
     }
 
     @Bean
@@ -42,10 +42,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/auth/signup",
                                 "/auth/signin",
-                                "/auth/verify-aadhaar",
-                                "/auth/validate-otp",
-                                "/auth/generate-otp",
-                                "/auth/resend-otp"
+                                "/auth/verify-aadhaar"
+
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

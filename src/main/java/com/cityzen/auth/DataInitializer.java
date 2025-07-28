@@ -15,7 +15,7 @@ public class DataInitializer implements CommandLineRunner {
 //        aadhaarRegistryRepository.save(new AadhaarRegistry("567856785678"));
 //        aadhaarRegistryRepository.save(new AadhaarRegistry("111222333444"));
 //        aadhaarRegistryRepository.save(new AadhaarRegistry("555666777888"));
-//        aadhaarRegistryRepository.save(new AadhaarRegistry("147852369852"));
-//        aadhaarRegistryRepository.save(new AadhaarRegistry("789654123654"));
+//        aadhaarRegistryRepository.save(new AadhaarRegistry("432143214321"));
+//        aadhaarRegistryRepository.save(new AadhaarRegistry("876587658765"));
     }
 }

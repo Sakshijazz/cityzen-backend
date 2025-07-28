@@ -1,25 +1,34 @@
 package com.cityzen.auth.service;
 
 import com.cityzen.auth.dto.*;
+import com.cityzen.auth.entity.ForgotPasswordToken;
 import com.cityzen.auth.entity.User;
 import com.cityzen.auth.enums.Role;
+import com.cityzen.auth.exception.CustomException;
 import com.cityzen.auth.repository.AadhaarRegistryRepository;
+import com.cityzen.auth.repository.ForgotPasswordTokenRepository;
 import com.cityzen.auth.repository.UserRepository;
 import com.cityzen.auth.util.JwtUtil;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 @Primary
 public class AuthServiceImpl implements AuthService {
+
+    @Autowired
+    private ForgotPasswordTokenRepository forgotPasswordTokenRepository;
 
     @Autowired
     private AadhaarRegistryRepository aadhaarRegistryRepository;
@@ -32,6 +41,9 @@ public class AuthServiceImpl implements AuthService {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private EmailService emailService;
 
     private boolean isValidPassword(String password) {
         return password != null && password.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*#?&]).{8,}$");
@@ -105,43 +117,68 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void forgotPassword(ForgotPasswordRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + request.getEmail()));
+                .orElseThrow(() -> new CustomException("User not found with email: " + request.getEmail(), HttpStatus.NOT_FOUND));
 
-        String newPassword = UUID.randomUUID().toString().substring(0, 8);
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
-        // Email sending logic in controller or separate email service
+        // Generate a unique reset token
+        String token = UUID.randomUUID().toString();
+
+        // Save the token and its expiry date in ForgotPasswordTokenRepository
+        ForgotPasswordToken forgotPasswordToken = new ForgotPasswordToken();
+        forgotPasswordToken.setEmail(request.getEmail());
+        forgotPasswordToken.setToken(token);
+        forgotPasswordToken.setExpiryDate(LocalDateTime.now().plusHours(1)); // Set expiry time for the token
+        forgotPasswordTokenRepository.save(forgotPasswordToken);
+        // Send email with the reset token link
+        emailService.sendPasswordResetEmail(user.getEmail(), token);
     }
 
     @Override
     public void resetPassword(ResetPasswordRequest request) {
-        String email = jwtUtil.extractUsername(request.getToken());
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+        // Step 1: Validate the reset token
+        Optional<ForgotPasswordToken> tokenOpt = forgotPasswordTokenRepository.findByToken(request.getToken());
+        if (tokenOpt.isPresent() && tokenOpt.get().getExpiryDate().isAfter(LocalDateTime.now())) {
+            // Step 2: Retrieve the user associated with the token
+            String email = tokenOpt.get().getEmail(); // Get the email from the token
+            Optional<User> userOpt = userRepository.findByEmail(email);
+            if (userOpt.isPresent()) {
+                User user = userOpt.get();
 
-        if (!isValidPassword(request.getNewPassword())) {
-            throw new IllegalArgumentException("Password does not meet strength requirements");
+                // Step 3: Validate the new password (you can implement your own validation logic)
+                if (!isValidPassword(request.getNewPassword())) {
+                    throw new IllegalArgumentException("Password does not meet strength requirements");
+                }
+                // Step 4: Hash the new password and update the user record
+                user.setPassword(passwordEncoder.encode(request.getNewPassword())); // Hash the new password
+                userRepository.save(user); // Save the updated user
+                // Step 5: Delete the token after use
+                forgotPasswordTokenRepository.delete(tokenOpt.get()); // Delete the token
+            } else {
+                throw new CustomException("User not found", HttpStatus.NOT_FOUND);
+            }
+        } else {
+            throw new CustomException("Invalid or expired token", HttpStatus.BAD_REQUEST);
         }
-
-        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        userRepository.save(user);
     }
 
     @Override
-    @Transactional
     public void changePassword(ChangePasswordRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + request.getEmail()));
-
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            throw new IllegalArgumentException("Incorrect current password");
+        // Step 1: Find the user by email from the request
+        Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            // Step 2: Validate the current password
+            if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+                throw new CustomException("Current password is incorrect", HttpStatus.UNAUTHORIZED);
+            }
+            // Step 3: Validate the new password (you can implement your own validation logic)
+            if (!isValidPassword(request.getNewPassword())) {
+                throw new IllegalArgumentException("New password does not meet strength requirements");
+            }
+            // Step 4: Update to the new password
+            user.setPassword(passwordEncoder.encode(request.getNewPassword())); // Hash the new password
+            userRepository.save(user); // Save the updated user
+        } else {
+            throw new CustomException("User not found", HttpStatus.NOT_FOUND);
         }
-
-        if (!isValidPassword(request.getNewPassword())) {
-            throw new IllegalArgumentException("Password must meet strength requirements");
-        }
-
-        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        userRepository.save(user);
     }
 }

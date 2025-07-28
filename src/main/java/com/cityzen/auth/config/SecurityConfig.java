@@ -42,7 +42,9 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/auth/signup",
                                 "/auth/signin",
-                                "/auth/verify-aadhaar"
+                                "/auth/verify-aadhaar",
+                                "/auth/forgot-password",
+                                "/auth/reset-password"
 
                         ).permitAll()
                         .anyRequest().authenticated()

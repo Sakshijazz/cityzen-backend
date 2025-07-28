@@ -13,8 +13,8 @@ public class ChangePasswordRequest {
     @NotBlank
     private String newPassword;
 
-    @NotBlank
-    private String confirmPassword;
+//    @NotBlank
+//    private String confirmPassword;
 
     // Getters and Setters
 
@@ -42,11 +42,11 @@ public class ChangePasswordRequest {
         this.newPassword = newPassword;
     }
 
-    public String getConfirmPassword() {
-        return confirmPassword;
-    }
-
-    public void setConfirmPassword(String confirmPassword) {
-        this.confirmPassword = confirmPassword;
-    }
+//    public String getConfirmPassword() {
+//        return confirmPassword;
+//    }
+//
+//    public void setConfirmPassword(String confirmPassword) {
+//        this.confirmPassword = confirmPassword;
+//    }
 }

@@ -1,5 +1,6 @@
 package com.cityzen.auth.controller;
 import com.cityzen.auth.dto.*;
+import com.cityzen.auth.service.AadhaarRegistryService;
 import com.cityzen.auth.service.AuthService;
 import com.cityzen.auth.service.EmailService;
 import com.cityzen.auth.service.OtpService;
@@ -19,7 +20,8 @@ public class AuthController {
     private AuthenticationManager authenticationManager;
     @Autowired
     private OtpService otpService;
-
+    @Autowired
+    private AadhaarRegistryService service;
     @Autowired
     private EmailService emailService;
 
@@ -106,6 +108,11 @@ public class AuthController {
         } else {
             return ResponseEntity.badRequest().body("Invalid OTP");
         }
+    }
+    @PostMapping("/add-aadhaar")
+    public ResponseEntity<String> addAadhaar(@RequestBody AadhaarRequest request) {
+        String response = service.saveAadhaar(request.getAadhaar());
+        return ResponseEntity.ok(response);
     }
 }
 

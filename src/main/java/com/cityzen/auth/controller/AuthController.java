@@ -46,6 +46,8 @@ public class AuthController {
     public ResponseEntity<?> signup(@RequestBody SignUpRequest request) {
         // Proceed with signup after OTP verification
         authService.signup(request);
+//        System.out.println("🚨 SIGNUP called");
+//        System.out.println("Request Body: " + request);
         return ResponseEntity.ok("User registered successfully");
     }
 

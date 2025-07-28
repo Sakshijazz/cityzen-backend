@@ -35,16 +35,12 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                "/",
                                 "/auth/signup",
                                 "/auth/signin",
                                 "/auth/verify-aadhaar",
                                 "/auth/forgot-password",
-                                "/auth/reset-password",
-                                "/auth/change-password",
-                                "/auth/add-aadhaar",
-                                "/auth/generate-otp",
-                                "/auth/validate-otp",
-                                "/auth/resend-otp"
+                                "/auth/reset-password"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
